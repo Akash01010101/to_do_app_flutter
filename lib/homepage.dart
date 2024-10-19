@@ -11,7 +11,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _controller = TextEditingController();
   List todoList = [];
-
+  int p = 0;
   @override
   void initState() {
     super.initState();
@@ -37,6 +37,17 @@ class _HomePageState extends State<HomePage> {
 
   void del(int index) {
     setState(() {
+      if (todoList[index][1] == true) {
+        p = p + 10;
+        _showDialog(context, "10 points will be awarded");
+      } else {
+        if (p >= 10) {
+          p = p - 10;
+          _showDialog(context, "10 points will be deducted");
+        } else {
+          _showDialog(context, "You're broke");
+        }
+      }
       todoList.removeAt(index);
       saveprefs(); // Save changes after deletion
     });
@@ -45,7 +56,10 @@ class _HomePageState extends State<HomePage> {
   void loadprefs() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     List<String>? loadedList = prefs.getStringList('todo_list');
-
+    int? pts = prefs.getInt('ps');
+    if (pts != null) {
+      p = pts ?? 0;
+    }
     if (loadedList != null) {
       setState(() {
         todoList = loadedList.map((item) {
@@ -59,12 +73,33 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _showDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Alert'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void saveprefs() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     List<String> stringList = todoList.map((item) {
       return '${item[0]}|${item[1]}'; // Join text and status with a delimiter
     }).toList();
     await prefs.setStringList('todo_list', stringList);
+    await prefs.setInt('ps', p);
   }
 
   @override
@@ -72,6 +107,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 169, 84, 238),
       appBar: AppBar(
+        leading: Center(
+          child: Text(
+            "Pts: $p",
+            style: const TextStyle(fontSize: 20),
+          ),
+        ),
         title: const Center(child: Text("Todo App")),
         backgroundColor: const Color.fromARGB(255, 250, 75, 212),
       ),
@@ -84,6 +125,13 @@ class _HomePageState extends State<HomePage> {
                 onChanged: (value) => change(index),
                 del: (context) => del(index));
           }),
+      bottomNavigationBar: ElevatedButton(
+        child: const Text("Rules"),
+        onPressed: () => {
+          _showDialog(context,
+              "10 Points will be creadited if a completed task is deleted \n10 points will be deducted if an incomplete task is deleted")
+        },
+      ),
       floatingActionButton: Row(children: [
         Expanded(
             child: Padding(
